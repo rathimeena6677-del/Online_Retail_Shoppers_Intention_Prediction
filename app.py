@@ -121,141 +121,158 @@ with tab_predict:
     # ==========================================================================
     if input_mode == "Manual Entry":
 
-        st.subheader("Enter visitor details")
-        st.caption("The default numbers below are a real purchasing session from the dataset.")
+        # Split the page into two side-by-side sections:
+        # - left  = all the input fields (a bit wider, ratio 1.3)
+        # - right = the result, once the user clicks Predict (ratio 1)
+        # This way the result is visible right away, no scrolling needed.
+        left, right = st.columns([1.3, 1])
 
-        # --- Pages viewed and time spent ---
-        st.markdown("**Pages Viewed & Time Spent**")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            administrative = st.number_input("Administrative pages", min_value=0, value=3)
-            administrative_duration = st.number_input("Admin time spent (sec)", min_value=0.0, value=67.5)
-        with col2:
-            informational = st.number_input("Informational pages", min_value=0, value=0)
-            informational_duration = st.number_input("Info time spent (sec)", min_value=0.0, value=0.0)
-        with col3:
-            product_related = st.number_input("Product pages", min_value=0, value=30)
-            product_related_duration = st.number_input("Product time spent (sec)", min_value=0.0, value=761.75)
+        with left:
+            st.subheader("Enter visitor details")
+            st.caption("The default numbers below are a real purchasing session from the dataset.")
 
-        # --- Engagement quality ---
-        st.markdown("**Engagement Quality**")
-        col4, col5, col6 = st.columns(3)
-        with col4:
-            bounce_rates = st.slider("Bounce rate", 0.0, 1.0, 0.0, 0.01)
-        with col5:
-            exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.015, 0.01)
-        with col6:
-            page_values = st.number_input("Page value ($)", min_value=0.0, value=19.31)
+            # --- Pages viewed and time spent ---
+            st.markdown("**Pages Viewed & Time Spent**")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                administrative = st.number_input("Administrative pages", min_value=0, value=3)
+                administrative_duration = st.number_input("Admin time spent (sec)", min_value=0.0, value=67.5)
+            with col2:
+                informational = st.number_input("Informational pages", min_value=0, value=0)
+                informational_duration = st.number_input("Info time spent (sec)", min_value=0.0, value=0.0)
+            with col3:
+                product_related = st.number_input("Product pages", min_value=0, value=30)
+                product_related_duration = st.number_input("Product time spent (sec)", min_value=0.0, value=761.75)
 
-        # --- Visitor details ---
-        st.markdown("**Visitor Details**")
-        col7, col8, col9 = st.columns(3)
-        with col7:
-            month = st.selectbox("Month", list(MONTH_TO_NUMBER.keys()), index=1)  # default "Dec"
-            weekend = st.selectbox("Weekend session?", ["No", "Yes"], index=1)
-        with col8:
-            visitor_type = st.selectbox("Visitor type", list(VISITOR_TYPE_TO_NUMBER.keys()), index=2)
-            operating_system = st.selectbox("Operating system", OPERATING_SYSTEM_OPTIONS, index=1)
-        with col9:
-            browser = st.selectbox("Browser", BROWSER_OPTIONS, index=3)
-            region = st.selectbox("Region", REGION_OPTIONS, index=0)
+            # --- Engagement quality ---
+            st.markdown("**Engagement Quality**")
+            col4, col5, col6 = st.columns(3)
+            with col4:
+                bounce_rates = st.slider("Bounce rate", 0.0, 1.0, 0.0, 0.01)
+            with col5:
+                exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.015, 0.01)
+            with col6:
+                page_values = st.number_input("Page value ($)", min_value=0.0, value=19.31)
 
-        traffic_type = st.selectbox("Traffic source", TRAFFIC_OPTIONS, index=0)
+            # --- Visitor details ---
+            st.markdown("**Visitor Details**")
+            col7, col8, col9 = st.columns(3)
+            with col7:
+                month = st.selectbox("Month", list(MONTH_TO_NUMBER.keys()), index=1)  # default "Dec"
+                weekend = st.selectbox("Weekend session?", ["No", "Yes"], index=1)
+            with col8:
+                visitor_type = st.selectbox("Visitor type", list(VISITOR_TYPE_TO_NUMBER.keys()), index=2)
+                operating_system = st.selectbox("Operating system", OPERATING_SYSTEM_OPTIONS, index=1)
+            with col9:
+                browser = st.selectbox("Browser", BROWSER_OPTIONS, index=3)
+                region = st.selectbox("Region", REGION_OPTIONS, index=0)
 
-        # A normal button, not a form. Simpler to follow for a beginner.
-        predict_clicked = st.button("🔍 Predict Purchase Intention")
+            traffic_type = st.selectbox("Traffic source", TRAFFIC_OPTIONS, index=0)
 
-        # Only run the prediction code if the button was clicked.
-        if predict_clicked:
+            # A normal button, not a form. Simpler to follow for a beginner.
+            predict_clicked = st.button("🔍 Predict Purchase Intention")
 
-            # Step A: turn the text choices into the numbers the model expects.
-            month_number = MONTH_TO_NUMBER[month]
-            visitor_type_number = VISITOR_TYPE_TO_NUMBER[visitor_type]
-            weekend_number = 1 if weekend == "Yes" else 0
-
-            # These dropdowns are just "OS 2" -> 2, "Browser 4" -> 4, etc.
-            # We can get the number by taking the last part of the text.
-            operating_system_number = int(operating_system.split(" ")[-1])
-            browser_number = int(browser.split(" ")[-1])
-            region_number = int(region.split(" ")[-1])
-            traffic_type_number = int(traffic_type.split(" ")[-1])
-
-            # Step B: put everything into one row, in the exact column order
-            # the model was trained on.
-            one_row = pd.DataFrame([{
-                "Administrative": administrative,
-                "Administrative_Duration": administrative_duration,
-                "Informational": informational,
-                "Informational_Duration": informational_duration,
-                "ProductRelated": product_related,
-                "ProductRelated_Duration": product_related_duration,
-                "BounceRates": bounce_rates,
-                "ExitRates": exit_rates,
-                "PageValues": page_values,
-                "SpecialDay": 0.0,  # not shown in the UI, assume "not a special day"
-                "Month": month_number,
-                "OperatingSystems": operating_system_number,
-                "Browser": browser_number,
-                "Region": region_number,
-                "TrafficType": traffic_type_number,
-                "VisitorType": visitor_type_number,
-                "Weekend": weekend_number
-            }])[FEATURE_ORDER]
-
-            # Step C: scale the numbers the same way the training data was scaled.
-            scaled_row = scaler.transform(one_row)
-
-            # Step D: ask the model to predict.
-            prediction = model.predict(scaled_row)[0]          # 0 = no purchase, 1 = purchase
-            probabilities = model.predict_proba(scaled_row)[0]  # [prob_no, prob_yes]
-            probability_no = probabilities[0]
-            probability_yes = probabilities[1]
-
-            # Step E: show the result.
-            st.subheader("Result")
-            if prediction == 1:
-                st.success("✅ Likely to PURCHASE")
-            else:
-                st.warning("❌ Unlikely to purchase")
-
-            metric_col1, metric_col2 = st.columns(2)
-            metric_col1.metric("Chance of Purchase", f"{probability_yes:.1%}")
-            metric_col2.metric("Chance of No Purchase", f"{probability_no:.1%}")
-
-            # A simple bar chart comparing the two probabilities.
-            chart_data = pd.DataFrame({
-                "Outcome": ["Purchase", "No Purchase"],
-                "Probability (%)": [probability_yes * 100, probability_no * 100]
-            }).set_index("Outcome")
-            st.bar_chart(chart_data)
-
-            # Some friendly suggestions depending on the result.
-            st.markdown("---")
-            if prediction == 1:
-                st.markdown("**Business Insights**")
-                st.markdown(
-                    "- 🎉 This visitor is already converting — no discount needed\n"
-                    "- 🧾 Keep checkout frictionless (avoid extra steps or popups)\n"
-                    "- ⬆️ Try upselling or cross-selling related/premium products\n"
-                    "- ⭐ Prompt for a review or ask them to join a loyalty program\n"
-                    "- 📦 Highlight fast/free shipping to reinforce the decision"
+        # This "with right:" block is at the SAME indentation level as "with left:"
+        # above (both are directly inside "if input_mode == 'Manual Entry':").
+        # Anything placed inside it shows up in the right-hand column.
+        with right:
+            if not predict_clicked:
+                # Nothing predicted yet — show a friendly hint instead of empty space.
+                st.subheader("Result")
+                st.info(
+                    "Fill in the visitor details on the left, then click "
+                    "**Predict Purchase Intention** to see the result here."
                 )
             else:
-                st.markdown("**Business Insights**")
-                st.markdown(
-                    "- 🏷️ Show a limited-time discount\n"
-                    "- 🔁 Recommend related products\n"
-                    "- 🎟️ Send a coupon code\n"
-                    "- 🚚 Offer free delivery\n"
-                    "- 📢 Show a personalized retargeting ad"
-                )
 
-            # Show the exact numbers we sent into the model.
-            # NOTE: this is placed INSIDE the "if predict_clicked" block
-            # on purpose. "one_row" only exists after the button is clicked,
-            # so this must never be shown/run before that happens.
-            with st.expander("See raw input passed to the model"):
-                st.dataframe(one_row)
+                # Step A: turn the text choices into the numbers the model expects.
+                month_number = MONTH_TO_NUMBER[month]
+                visitor_type_number = VISITOR_TYPE_TO_NUMBER[visitor_type]
+                weekend_number = 1 if weekend == "Yes" else 0
+
+                # These dropdowns are just "OS 2" -> 2, "Browser 4" -> 4, etc.
+                # We can get the number by taking the last part of the text.
+                operating_system_number = int(operating_system.split(" ")[-1])
+                browser_number = int(browser.split(" ")[-1])
+                region_number = int(region.split(" ")[-1])
+                traffic_type_number = int(traffic_type.split(" ")[-1])
+
+                # Step B: put everything into one row, in the exact column order
+                # the model was trained on.
+                one_row = pd.DataFrame([{
+                    "Administrative": administrative,
+                    "Administrative_Duration": administrative_duration,
+                    "Informational": informational,
+                    "Informational_Duration": informational_duration,
+                    "ProductRelated": product_related,
+                    "ProductRelated_Duration": product_related_duration,
+                    "BounceRates": bounce_rates,
+                    "ExitRates": exit_rates,
+                    "PageValues": page_values,
+                    "SpecialDay": 0.0,  # not shown in the UI, assume "not a special day"
+                    "Month": month_number,
+                    "OperatingSystems": operating_system_number,
+                    "Browser": browser_number,
+                    "Region": region_number,
+                    "TrafficType": traffic_type_number,
+                    "VisitorType": visitor_type_number,
+                    "Weekend": weekend_number
+                }])[FEATURE_ORDER]
+
+                # Step C: scale the numbers the same way the training data was scaled.
+                scaled_row = scaler.transform(one_row)
+
+                # Step D: ask the model to predict.
+                prediction = model.predict(scaled_row)[0]          # 0 = no purchase, 1 = purchase
+                probabilities = model.predict_proba(scaled_row)[0]  # [prob_no, prob_yes]
+                probability_no = probabilities[0]
+                probability_yes = probabilities[1]
+
+                # Step E: show the result.
+                st.subheader("Result")
+                if prediction == 1:
+                    st.success("✅ Likely to PURCHASE")
+                else:
+                    st.warning("❌ Unlikely to purchase")
+
+                metric_col1, metric_col2 = st.columns(2)
+                metric_col1.metric("Chance of Purchase", f"{probability_yes:.1%}")
+                metric_col2.metric("Chance of No Purchase", f"{probability_no:.1%}")
+
+                # A simple bar chart comparing the two probabilities.
+                chart_data = pd.DataFrame({
+                    "Outcome": ["Purchase", "No Purchase"],
+                    "Probability (%)": [probability_yes * 100, probability_no * 100]
+                }).set_index("Outcome")
+                st.bar_chart(chart_data)
+
+                # Some friendly suggestions depending on the result.
+                st.markdown("---")
+                if prediction == 1:
+                    st.markdown("**Business Insights**")
+                    st.markdown(
+                        "- 🎉 This visitor is already converting — no discount needed\n"
+                        "- 🧾 Keep checkout frictionless (avoid extra steps or popups)\n"
+                        "- ⬆️ Try upselling or cross-selling related/premium products\n"
+                        "- ⭐ Prompt for a review or ask them to join a loyalty program\n"
+                        "- 📦 Highlight fast/free shipping to reinforce the decision"
+                    )
+                else:
+                    st.markdown("**Business Insights**")
+                    st.markdown(
+                        "- 🏷️ Show a limited-time discount\n"
+                        "- 🔁 Recommend related products\n"
+                        "- 🎟️ Send a coupon code\n"
+                        "- 🚚 Offer free delivery\n"
+                        "- 📢 Show a personalized retargeting ad"
+                    )
+
+                # Show the exact numbers we sent into the model.
+                # NOTE: this is placed INSIDE the "if predict_clicked" block
+                # on purpose. "one_row" only exists after the button is clicked,
+                # so this must never be shown/run before that happens.
+                with st.expander("See raw input passed to the model"):
+                    st.dataframe(one_row)
 
     # ==========================================================================
     # MODE B: UPLOAD CSV — predict for MANY visitors at once

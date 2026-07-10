@@ -6,25 +6,100 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 
-# ----------------------------------------------------------------------------
-# Page setup
-# ----------------------------------------------------------------------------
+# ==============================================================================
+# PAGE CONFIG
+# ==============================================================================
 st.set_page_config(
-    page_title="Online Shopper Purchase Intention Predictor",
-    page_icon="🛒",
-    layout="centered"
+    page_title="ShopSense | Purchase Intention Predictor",
+    page_icon="🛍️",
+    layout="wide"
 )
 
-st.title("🛒 Online Shopper Purchase Intention Predictor")
-st.write(
-    "Predict whether a visitor will **make a purchase (Revenue = Yes/No)** "
-    "based on their browsing behaviour, using a Random Forest model trained "
-    "on the *Online Shoppers Purchasing Intention* dataset."
-)
+# ==============================================================================
+# STYLING
+# ==============================================================================
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap');
 
-# ----------------------------------------------------------------------------
-# Load model + scaler
-# ----------------------------------------------------------------------------
+html, body, [class*="css"]  {
+    font-family: 'Inter', sans-serif;
+}
+h1, h2, h3 {
+    font-family: 'Poppins', sans-serif !important;
+}
+
+/* Hero banner */
+.hero {
+    background: linear-gradient(135deg, #0F2027 0%, #203A43 50%, #134E5E 100%);
+    padding: 2.2rem 2rem;
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.hero h1 {
+    color: #ffffff;
+    font-size: 2rem;
+    margin-bottom: 0.4rem;
+}
+.hero p {
+    color: #B8C6CC;
+    font-size: 1rem;
+    margin: 0;
+}
+.badge {
+    display: inline-block;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-top: 0.7rem;
+}
+
+/* Buttons */
+.stButton>button, .stFormSubmitButton>button {
+    background: linear-gradient(90deg, #10B981, #059669);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.6rem 1.2rem;
+    font-weight: 600;
+    width: 100%;
+    transition: 0.2s;
+}
+.stButton>button:hover, .stFormSubmitButton>button:hover {
+    background: linear-gradient(90deg, #059669, #047857);
+    box-shadow: 0 4px 14px rgba(16,185,129,0.35);
+}
+
+/* Metric cards */
+div[data-testid="stMetric"] {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+}
+
+section[data-testid="stSidebar"] {
+    border-right: 1px solid rgba(255,255,255,0.08);
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="hero">
+    <h1>🛍️ ShopSense — Purchase Intention Predictor</h1>
+    <p>Predict whether an online shopper will complete a purchase this session, based on their real-time browsing behaviour.</p>
+    <span class="badge">🏆 Powered by Random Forest — 89.6% test accuracy</span>
+</div>
+""", unsafe_allow_html=True)
+
+# ==============================================================================
+# LOAD MODEL + SCALER
+# ==============================================================================
 @st.cache_resource
 def load_artifacts():
     with open("model.pkl", "rb") as f:
@@ -38,11 +113,10 @@ try:
 except FileNotFoundError:
     st.error(
         "Could not find `model.pkl` and/or `scaler.pkl`. Make sure both files "
-        "are in the same folder as this app (see `train_model.py` to generate them)."
+        "are in the same folder as this app."
     )
     st.stop()
 
-# Optional: raw dataset for EDA graphs (only needed for the "Data Insights" tab)
 DATA_PATH = "online_shoppers_intention.csv"
 
 @st.cache_data
@@ -53,19 +127,16 @@ def load_raw_data():
 
 raw_df = load_raw_data()
 
-# ----------------------------------------------------------------------------
-# Encodings used during training (must match the notebook's LabelEncoder output)
-# LabelEncoder sorts the unique values alphabetically, so:
-# Month order:   Aug, Dec, Feb, Jul, June, Mar, May, Nov, Oct, Sep
-# VisitorType:   New_Visitor, Other, Returning_Visitor
-# ----------------------------------------------------------------------------
+# ==============================================================================
+# CONSTANTS
+# ==============================================================================
+# LabelEncoder sorts unique values alphabetically -> these mappings match the
+# encoders fitted in the training notebook.
 MONTH_MAP = {
     "Aug": 0, "Dec": 1, "Feb": 2, "Jul": 3, "June": 4,
     "Mar": 5, "May": 6, "Nov": 7, "Oct": 8, "Sep": 9
 }
-VISITOR_MAP = {
-    "New_Visitor": 0, "Other": 1, "Returning_Visitor": 2
-}
+VISITOR_MAP = {"New_Visitor": 0, "Other": 1, "Returning_Visitor": 2}
 
 FEATURE_ORDER = [
     "Administrative", "Administrative_Duration", "Informational",
@@ -75,131 +146,196 @@ FEATURE_ORDER = [
     "VisitorType", "Weekend"
 ]
 
-tab_predict, tab_insights = st.tabs(["🔮 Predict", "📊 Data Insights"])
+# Results from the notebook's model comparison (train_test_split random_state=42)
+MODEL_RESULTS = pd.DataFrame({
+    "Model": ["Random Forest", "SVM", "Logistic Regression", "KNN", "Decision Tree"],
+    "Accuracy": [0.896188, 0.880373, 0.869019, 0.865369, 0.857259]
+})
+
+OS_OPTIONS = {f"OS {i}": i for i in range(1, 9)}
+BROWSER_OPTIONS = {f"Browser {i}": i for i in range(1, 14)}
+REGION_OPTIONS = {f"Region {i}": i for i in range(1, 10)}
+TRAFFIC_OPTIONS = {f"Traffic Type {i}": i for i in range(1, 21)}
+
+tab_predict, tab_compare, tab_insights = st.tabs(
+    ["🔮 Predict", "🏆 Model Comparison", "📊 Data Insights"]
+)
 
 # ==============================================================================
 # TAB 1: PREDICTION
 # ==============================================================================
 with tab_predict:
-    with st.form("prediction_form"):
-        st.subheader("Page visit behaviour")
-        col1, col2 = st.columns(2)
-        with col1:
-            administrative = st.number_input("Administrative pages visited", min_value=0, value=0, step=1)
-            informational = st.number_input("Informational pages visited", min_value=0, value=0, step=1)
-            product_related = st.number_input("Product-related pages visited", min_value=0, value=1, step=1)
-        with col2:
-            administrative_duration = st.number_input("Administrative duration (seconds)", min_value=0.0, value=0.0)
-            informational_duration = st.number_input("Informational duration (seconds)", min_value=0.0, value=0.0)
-            product_related_duration = st.number_input("Product-related duration (seconds)", min_value=0.0, value=0.0)
+    left, right = st.columns([1.3, 1])
 
-        st.subheader("Site engagement metrics")
-        col3, col4, col5 = st.columns(3)
-        with col3:
-            bounce_rates = st.number_input("Bounce rate", min_value=0.0, max_value=1.0, value=0.02, format="%.4f")
-        with col4:
-            exit_rates = st.number_input("Exit rate", min_value=0.0, max_value=1.0, value=0.05, format="%.4f")
-        with col5:
-            page_values = st.number_input("Page value", min_value=0.0, value=0.0)
+    with left:
+        with st.form("prediction_form"):
+            st.markdown("##### 📄 Pages Viewed & Time Spent")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                administrative = st.number_input("Administrative pages", min_value=0, value=0, step=1)
+                administrative_duration = st.number_input("↳ time spent (sec)", min_value=0.0, value=0.0, key="ad")
+            with c2:
+                informational = st.number_input("Informational pages", min_value=0, value=0, step=1)
+                informational_duration = st.number_input("↳ time spent (sec)", min_value=0.0, value=0.0, key="in")
+            with c3:
+                product_related = st.number_input("Product pages", min_value=0, value=1, step=1)
+                product_related_duration = st.number_input("↳ time spent (sec)", min_value=0.0, value=0.0, key="pr")
 
-        special_day = st.slider("Closeness to a special day (0 = far, 1 = very close)", 0.0, 1.0, 0.0, 0.1)
+            st.markdown("##### 📈 Engagement Quality")
+            c4, c5, c6 = st.columns(3)
+            with c4:
+                bounce_rates = st.slider("Bounce rate", 0.0, 1.0, 0.02, 0.01)
+            with c5:
+                exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.05, 0.01)
+            with c6:
+                page_values = st.number_input("Page value ($)", min_value=0.0, value=0.0)
 
-        st.subheader("Visitor & session info")
-        col6, col7 = st.columns(2)
-        with col6:
-            month = st.selectbox("Month", list(MONTH_MAP.keys()))
-            visitor_type = st.selectbox("Visitor type", list(VISITOR_MAP.keys()))
-            weekend = st.selectbox("Weekend session?", ["No", "Yes"])
-        with col7:
-            operating_systems = st.number_input("Operating system (code)", min_value=1, value=1, step=1)
-            browser = st.number_input("Browser (code)", min_value=1, value=1, step=1)
-            region = st.number_input("Region (code)", min_value=1, value=1, step=1)
+            st.markdown("##### 👤 Visitor Details")
+            c7, c8, c9 = st.columns(3)
+            with c7:
+                month = st.selectbox("Month", list(MONTH_MAP.keys()))
+                weekend = st.selectbox("Weekend session?", ["No", "Yes"])
+            with c8:
+                visitor_type = st.selectbox("Visitor type", list(VISITOR_MAP.keys()))
+                operating_systems = st.selectbox("Operating system", list(OS_OPTIONS.keys()))
+            with c9:
+                browser = st.selectbox("Browser", list(BROWSER_OPTIONS.keys()))
+                region = st.selectbox("Region", list(REGION_OPTIONS.keys()))
 
-        traffic_type = st.number_input("Traffic type (code)", min_value=1, value=1, step=1)
+            traffic_type = st.selectbox("Traffic source", list(TRAFFIC_OPTIONS.keys()))
 
-        submitted = st.form_submit_button("Predict Purchase Intention")
+            submitted = st.form_submit_button("🔍 Predict Purchase Intention")
 
-    if submitted:
-        input_dict = {
-            "Administrative": administrative,
-            "Administrative_Duration": administrative_duration,
-            "Informational": informational,
-            "Informational_Duration": informational_duration,
-            "ProductRelated": product_related,
-            "ProductRelated_Duration": product_related_duration,
-            "BounceRates": bounce_rates,
-            "ExitRates": exit_rates,
-            "PageValues": page_values,
-            "SpecialDay": special_day,
-            "Month": MONTH_MAP[month],
-            "OperatingSystems": operating_systems,
-            "Browser": browser,
-            "Region": region,
-            "TrafficType": traffic_type,
-            "VisitorType": VISITOR_MAP[visitor_type],
-            "Weekend": 1 if weekend == "Yes" else 0
-        }
-
-        input_df = pd.DataFrame([input_dict])[FEATURE_ORDER]
-        input_scaled = scaler.transform(input_df)
-
-        prediction = model.predict(input_scaled)[0]
-        proba = model.predict_proba(input_scaled)[0]
-        prob_no, prob_yes = proba[0], proba[1]
-
-        st.divider()
-        st.subheader("Prediction Result")
-
-        if prediction == 1:
-            st.success("✅ Likely to **PURCHASE** (Revenue = Yes)")
-        else:
-            st.warning("❌ Likely **NOT** to purchase (Revenue = No)")
-
-        # ---- Probability breakdown (chart) ----
-        prob_df = pd.DataFrame({
-            "Outcome": ["Will Purchase (Yes)", "Will Not Purchase (No)"],
-            "Probability (%)": [prob_yes * 100, prob_no * 100]
-        })
-        st.write("**Prediction Confidence**")
-        st.bar_chart(prob_df.set_index("Outcome"))
-
-        col_a, col_b = st.columns(2)
-        col_a.metric("Chance of Purchase (Yes)", f"{prob_yes:.2%}")
-        col_b.metric("Chance of No Purchase (No)", f"{prob_no:.2%}")
-
-        st.divider()
-
-        # ---- Business action based on prediction ----
-        if prediction == 1:
-            st.info(
-                "🎉 This visitor is already likely to buy — **no discount or offer needed**. "
-                "Focus on a smooth, fast checkout experience instead."
-            )
-        else:
-            st.subheader("💡 Suggested Retention Actions")
+    with right:
+        if not submitted:
+            st.markdown("##### ℹ️ How it works")
             st.write(
-                "This visitor is unlikely to purchase. Consider triggering one or more "
-                "of the following to improve conversion:"
+                "Fill in a visitor's session behaviour on the left — how many pages "
+                "they viewed, how long they stayed, and how engaged they were — and "
+                "the model will estimate their likelihood of completing a purchase."
             )
             st.markdown(
-                """
-- 🏷️ **Show a limited-time discount**
-- 🔁 **Recommend related/popular products**
-- 🎟️ **Send a coupon code via email/pop-up**
-- 🚚 **Offer free delivery**
-- 📢 **Display personalized retargeting ads**
-                """
+                "- 🛒 **High pages + long duration + repeat product views** → likely to buy\n"
+                "- 🚪 **Few pages + short duration + high bounce/exit rate** → unlikely to buy"
+            )
+        else:
+            input_dict = {
+                "Administrative": administrative,
+                "Administrative_Duration": administrative_duration,
+                "Informational": informational,
+                "Informational_Duration": informational_duration,
+                "ProductRelated": product_related,
+                "ProductRelated_Duration": product_related_duration,
+                "BounceRates": bounce_rates,
+                "ExitRates": exit_rates,
+                "PageValues": page_values,
+                "SpecialDay": 0.0,  # not surfaced in the UI; defaulted to "not near a special day"
+                "Month": MONTH_MAP[month],
+                "OperatingSystems": OS_OPTIONS[operating_systems],
+                "Browser": BROWSER_OPTIONS[browser],
+                "Region": REGION_OPTIONS[region],
+                "TrafficType": TRAFFIC_OPTIONS[traffic_type],
+                "VisitorType": VISITOR_MAP[visitor_type],
+                "Weekend": 1 if weekend == "Yes" else 0
+            }
+
+            input_df = pd.DataFrame([input_dict])[FEATURE_ORDER]
+            input_scaled = scaler.transform(input_df)
+
+            prediction = model.predict(input_scaled)[0]
+            proba = model.predict_proba(input_scaled)[0]
+            prob_no, prob_yes = proba[0], proba[1]
+
+            st.markdown("##### 🎯 Result")
+            if prediction == 1:
+                st.success("✅ **Likely to PURCHASE**")
+            else:
+                st.warning("❌ **Unlikely to purchase**")
+
+            m1, m2 = st.columns(2)
+            m1.metric("Chance of Purchase", f"{prob_yes:.1%}")
+            m2.metric("Chance of No Purchase", f"{prob_no:.1%}")
+
+            prob_df = pd.DataFrame({
+                "Outcome": ["Purchase", "No Purchase"],
+                "Probability (%)": [prob_yes * 100, prob_no * 100]
+            }).set_index("Outcome")
+            st.bar_chart(prob_df)
+
+            st.markdown("---")
+            if prediction == 1:
+                st.info("🎉 Already converting — no discount needed. Keep checkout frictionless.")
+            else:
+                st.markdown("##### 💡 Suggested Retention Actions")
+                st.markdown(
+                    "- 🏷️ Show a limited-time discount\n"
+                    "- 🔁 Recommend related products\n"
+                    "- 🎟️ Send a coupon code\n"
+                    "- 🚚 Offer free delivery\n"
+                    "- 📢 Show a personalized retargeting ad"
+                )
+
+            with st.expander("See raw input passed to the model"):
+                st.dataframe(input_df)
+
+# ==============================================================================
+# TAB 2: MODEL COMPARISON
+# ==============================================================================
+with tab_compare:
+    st.markdown("##### Why Random Forest?")
+    st.write(
+        "Five algorithms were trained and evaluated on the same 80/20 train-test "
+        "split. Random Forest gave the best accuracy and was selected for this app."
+    )
+
+    ranked = MODEL_RESULTS.sort_values("Accuracy", ascending=False).reset_index(drop=True)
+
+    cols = st.columns(len(ranked))
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+    for i, col in enumerate(cols):
+        with col:
+            is_best = i == 0
+            st.metric(
+                f"{medals[i]} {ranked.loc[i, 'Model']}",
+                f"{ranked.loc[i, 'Accuracy']:.2%}",
+                "Deployed" if is_best else None
             )
 
-        with st.expander("See raw input passed to the model"):
-            st.dataframe(input_df)
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    colors = ["#10B981" if m == "Random Forest" else "#4C72B0" for m in ranked["Model"]]
+    bars = ax.barh(ranked["Model"], ranked["Accuracy"], color=colors)
+    ax.invert_yaxis()
+    ax.set_xlim(0.75, 0.95)
+    ax.set_xlabel("Test Accuracy")
+    ax.set_title("Model Comparison — Test Set Accuracy")
+    for bar, acc in zip(bars, ranked["Accuracy"]):
+        ax.text(bar.get_width() + 0.003, bar.get_y() + bar.get_height() / 2,
+                f"{acc:.2%}", va="center", fontsize=9)
+    st.pyplot(fig)
+
+    st.markdown("##### Random Forest — Classification Report (test set)")
+    report_df = pd.DataFrame({
+        "Class": ["No Purchase (0)", "Purchase (1)"],
+        "Precision": [0.91, 0.76],
+        "Recall": [0.97, 0.55],
+        "F1-score": [0.94, 0.64],
+        "Support": [2055, 411]
+    })
+    st.dataframe(report_df, use_container_width=True, hide_index=True)
+    st.caption(
+        "Overall accuracy: 90%. The model is very reliable at spotting non-buyers "
+        "(97% recall) and reasonably good at spotting buyers (55% recall) — a "
+        "typical trade-off on imbalanced purchase data like this."
+    )
 
 # ==============================================================================
-# TAB 2: DATA INSIGHTS / EDA (mirrors the notebook's exploratory graphs)
+# TAB 3: DATA INSIGHTS / EDA
 # ==============================================================================
 with tab_insights:
-    st.subheader("Model: Feature Importance")
-    st.write("Which browsing-behaviour features matter most to the Random Forest model.")
+    st.markdown("##### Feature Importance")
+    st.write("Which browsing-behaviour signals matter most to the Random Forest model.")
 
     try:
         importance_df = pd.DataFrame({
@@ -227,51 +363,46 @@ with tab_insights:
     else:
         df = raw_df.copy()
 
-        st.subheader("Purchase Distribution")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        df["Revenue"].value_counts().plot(kind="bar", ax=ax, color="#55A868")
-        ax.set_xlabel("Revenue")
-        ax.set_ylabel("Count")
-        st.pyplot(fig)
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("##### Purchase Distribution")
+            fig, ax = plt.subplots(figsize=(5, 4))
+            df["Revenue"].value_counts().plot(kind="bar", ax=ax, color="#55A868")
+            ax.set_xlabel("Revenue")
+            ax.set_ylabel("Count")
+            st.pyplot(fig)
+        with col_b:
+            st.markdown("##### Visitor Type Distribution")
+            fig, ax = plt.subplots(figsize=(5, 4))
+            df["VisitorType"].value_counts().plot(kind="bar", ax=ax, color=["green", "orange", "blue"])
+            ax.set_xlabel("Visitor Type")
+            ax.set_ylabel("Number of Visitors")
+            st.pyplot(fig)
 
-        st.subheader("Visitor Type Distribution")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        df["VisitorType"].value_counts().plot(kind="bar", ax=ax, color=["green", "orange", "blue"])
-        ax.set_xlabel("Visitor Type")
-        ax.set_ylabel("Number of Visitors")
-        st.pyplot(fig)
-
-        st.subheader("Purchases by Month")
+        st.markdown("##### Purchases by Month")
         fig, ax = plt.subplots(figsize=(9, 4))
         df.groupby("Month")["Revenue"].sum().plot(kind="bar", ax=ax, color="#C44E52")
         ax.set_xlabel("Month")
         ax.set_ylabel("Number of Purchases")
         st.pyplot(fig)
 
-        st.subheader("Weekend vs Purchase")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        pd.crosstab(df["Weekend"], df["Revenue"]).plot(kind="bar", ax=ax)
-        ax.set_xlabel("Weekend")
-        ax.set_ylabel("Number of Customers")
-        st.pyplot(fig)
-
-        col_h1, col_h2 = st.columns(2)
-        with col_h1:
-            st.subheader("Bounce Rate Distribution")
+        col_c, col_d = st.columns(2)
+        with col_c:
+            st.markdown("##### Weekend vs Purchase")
+            fig, ax = plt.subplots(figsize=(5, 4))
+            pd.crosstab(df["Weekend"], df["Revenue"]).plot(kind="bar", ax=ax)
+            ax.set_xlabel("Weekend")
+            ax.set_ylabel("Number of Customers")
+            st.pyplot(fig)
+        with col_d:
+            st.markdown("##### Bounce Rate Distribution")
             fig, ax = plt.subplots(figsize=(5, 4))
             ax.hist(df["BounceRates"], bins=30, color="#8172B2")
             ax.set_xlabel("Bounce Rate")
             ax.set_ylabel("Frequency")
             st.pyplot(fig)
-        with col_h2:
-            st.subheader("Exit Rate Distribution")
-            fig, ax = plt.subplots(figsize=(5, 4))
-            ax.hist(df["ExitRates"], bins=30, color="#CCB974")
-            ax.set_xlabel("Exit Rate")
-            ax.set_ylabel("Frequency")
-            st.pyplot(fig)
 
-        st.subheader("Correlation Heatmap")
+        st.markdown("##### Correlation Heatmap")
         fig, ax = plt.subplots(figsize=(10, 7))
         sns.heatmap(df.corr(numeric_only=True), annot=True, cmap="coolwarm", fmt=".2f", ax=ax)
         st.pyplot(fig)

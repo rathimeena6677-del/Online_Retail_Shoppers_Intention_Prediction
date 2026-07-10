@@ -120,12 +120,14 @@ except FileNotFoundError:
 DATA_PATH = "online_shoppers_intention.csv"
 
 @st.cache_data
-def load_raw_data():
+def load_default_data():
     if os.path.exists(DATA_PATH):
         return pd.read_csv(DATA_PATH)
     return None
 
-raw_df = load_raw_data()
+@st.cache_data
+def load_uploaded_data(file):
+    return pd.read_csv(file)
 
 # ==============================================================================
 # CONSTANTS
@@ -353,12 +355,37 @@ with tab_insights:
         st.info("This model type doesn't expose `feature_importances_`.")
 
     st.divider()
+    st.markdown("##### Dataset")
+
+    uploaded_file = st.file_uploader(
+        "Upload a CSV to explore your own data (optional)",
+        type=["csv"],
+        help="Must have the same columns as the online_shoppers_intention dataset."
+    )
+
+    raw_df = None
+    source_label = None
+
+    if uploaded_file is not None:
+        try:
+            raw_df = load_uploaded_data(uploaded_file)
+            source_label = f"📤 Using uploaded file: **{uploaded_file.name}**"
+        except Exception as e:
+            st.error(f"Couldn't read that file: {e}")
+
+    if raw_df is None:
+        default_df = load_default_data()
+        if default_df is not None:
+            raw_df = default_df
+            source_label = f"📁 Using bundled default dataset: **{DATA_PATH}**"
+
+    if source_label:
+        st.caption(source_label)
 
     if raw_df is None:
         st.warning(
-            f"To see the full EDA dashboard (purchase distribution, visitor type, "
-            f"monthly trend, correlation heatmap, etc.), add your dataset as "
-            f"`{DATA_PATH}` in the same folder as `app.py`, then redeploy."
+            f"No dataset available. Either upload a CSV above, or add "
+            f"`{DATA_PATH}` to the same folder as `app.py` and redeploy."
         )
     else:
         df = raw_df.copy()

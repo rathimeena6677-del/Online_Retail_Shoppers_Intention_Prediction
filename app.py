@@ -167,118 +167,199 @@ tab_predict, tab_compare, tab_insights = st.tabs(
 # TAB 1: PREDICTION
 # ==============================================================================
 with tab_predict:
-    left, right = st.columns([1.3, 1])
+    mode = st.radio(
+        "Choose input method",
+        ["✍️ Manual Entry", "📤 Upload CSV (batch predict)"],
+        horizontal=True,
+        label_visibility="collapsed"
+    )
 
-    with left:
-        with st.form("prediction_form"):
-            st.markdown("##### 📄 Pages Viewed & Time Spent")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                administrative = st.number_input("Administrative pages", min_value=0, value=0, step=1)
-                administrative_duration = st.number_input("↳ time spent (sec)", min_value=0.0, value=0.0, key="ad")
-            with c2:
-                informational = st.number_input("Informational pages", min_value=0, value=0, step=1)
-                informational_duration = st.number_input("↳ time spent (sec)", min_value=0.0, value=0.0, key="in")
-            with c3:
-                product_related = st.number_input("Product pages", min_value=0, value=1, step=1)
-                product_related_duration = st.number_input("↳ time spent (sec)", min_value=0.0, value=0.0, key="pr")
+    # --------------------------------------------------------------------
+    # MODE A: MANUAL ENTRY (single visitor)
+    # --------------------------------------------------------------------
+    if mode == "✍️ Manual Entry":
+        left, right = st.columns([1.3, 1])
 
-            st.markdown("##### 📈 Engagement Quality")
-            c4, c5, c6 = st.columns(3)
-            with c4:
-                bounce_rates = st.slider("Bounce rate", 0.0, 1.0, 0.02, 0.01)
-            with c5:
-                exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.05, 0.01)
-            with c6:
-                page_values = st.number_input("Page value ($)", min_value=0.0, value=0.0)
+        with left:
+            with st.form("prediction_form"):
+                st.markdown("##### 📄 Pages Viewed & Time Spent")
+                c1, c2, c3 = st.columns(3)
+                with c1:
+                    administrative = st.number_input("Administrative pages", min_value=0, value=0, step=1)
+                    administrative_duration = st.number_input("Admin time spent (sec)", min_value=0.0, value=0.0, key="ad")
+                with c2:
+                    informational = st.number_input("Informational pages", min_value=0, value=0, step=1)
+                    informational_duration = st.number_input("Info time spent (sec)", min_value=0.0, value=0.0, key="in")
+                with c3:
+                    product_related = st.number_input("Product pages", min_value=0, value=1, step=1)
+                    product_related_duration = st.number_input("Product time spent (sec)", min_value=0.0, value=0.0, key="pr")
 
-            st.markdown("##### 👤 Visitor Details")
-            c7, c8, c9 = st.columns(3)
-            with c7:
-                month = st.selectbox("Month", list(MONTH_MAP.keys()))
-                weekend = st.selectbox("Weekend session?", ["No", "Yes"])
-            with c8:
-                visitor_type = st.selectbox("Visitor type", list(VISITOR_MAP.keys()))
-                operating_systems = st.selectbox("Operating system", list(OS_OPTIONS.keys()))
-            with c9:
-                browser = st.selectbox("Browser", list(BROWSER_OPTIONS.keys()))
-                region = st.selectbox("Region", list(REGION_OPTIONS.keys()))
+                st.markdown("##### 📈 Engagement Quality")
+                c4, c5, c6 = st.columns(3)
+                with c4:
+                    bounce_rates = st.slider("Bounce rate", 0.0, 1.0, 0.02, 0.01)
+                with c5:
+                    exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.05, 0.01)
+                with c6:
+                    page_values = st.number_input("Page value ($)", min_value=0.0, value=0.0)
 
-            traffic_type = st.selectbox("Traffic source", list(TRAFFIC_OPTIONS.keys()))
+                st.markdown("##### 👤 Visitor Details")
+                c7, c8, c9 = st.columns(3)
+                with c7:
+                    month = st.selectbox("Month", list(MONTH_MAP.keys()))
+                    weekend = st.selectbox("Weekend session?", ["No", "Yes"])
+                with c8:
+                    visitor_type = st.selectbox("Visitor type", list(VISITOR_MAP.keys()))
+                    operating_systems = st.selectbox("Operating system", list(OS_OPTIONS.keys()))
+                with c9:
+                    browser = st.selectbox("Browser", list(BROWSER_OPTIONS.keys()))
+                    region = st.selectbox("Region", list(REGION_OPTIONS.keys()))
 
-            submitted = st.form_submit_button("🔍 Predict Purchase Intention")
+                traffic_type = st.selectbox("Traffic source", list(TRAFFIC_OPTIONS.keys()))
 
-    with right:
-        if not submitted:
-            st.markdown("##### ℹ️ How it works")
-            st.write(
-                "Fill in a visitor's session behaviour on the left — how many pages "
-                "they viewed, how long they stayed, and how engaged they were — and "
-                "the model will estimate their likelihood of completing a purchase."
-            )
-            st.markdown(
-                "- 🛒 **High pages + long duration + repeat product views** → likely to buy\n"
-                "- 🚪 **Few pages + short duration + high bounce/exit rate** → unlikely to buy"
-            )
-        else:
-            input_dict = {
-                "Administrative": administrative,
-                "Administrative_Duration": administrative_duration,
-                "Informational": informational,
-                "Informational_Duration": informational_duration,
-                "ProductRelated": product_related,
-                "ProductRelated_Duration": product_related_duration,
-                "BounceRates": bounce_rates,
-                "ExitRates": exit_rates,
-                "PageValues": page_values,
-                "SpecialDay": 0.0,  # not surfaced in the UI; defaulted to "not near a special day"
-                "Month": MONTH_MAP[month],
-                "OperatingSystems": OS_OPTIONS[operating_systems],
-                "Browser": BROWSER_OPTIONS[browser],
-                "Region": REGION_OPTIONS[region],
-                "TrafficType": TRAFFIC_OPTIONS[traffic_type],
-                "VisitorType": VISITOR_MAP[visitor_type],
-                "Weekend": 1 if weekend == "Yes" else 0
-            }
+                submitted = st.form_submit_button("🔍 Predict Purchase Intention")
 
-            input_df = pd.DataFrame([input_dict])[FEATURE_ORDER]
-            input_scaled = scaler.transform(input_df)
-
-            prediction = model.predict(input_scaled)[0]
-            proba = model.predict_proba(input_scaled)[0]
-            prob_no, prob_yes = proba[0], proba[1]
-
-            st.markdown("##### 🎯 Result")
-            if prediction == 1:
-                st.success("✅ **Likely to PURCHASE**")
-            else:
-                st.warning("❌ **Unlikely to purchase**")
-
-            m1, m2 = st.columns(2)
-            m1.metric("Chance of Purchase", f"{prob_yes:.1%}")
-            m2.metric("Chance of No Purchase", f"{prob_no:.1%}")
-
-            prob_df = pd.DataFrame({
-                "Outcome": ["Purchase", "No Purchase"],
-                "Probability (%)": [prob_yes * 100, prob_no * 100]
-            }).set_index("Outcome")
-            st.bar_chart(prob_df)
-
-            st.markdown("---")
-            if prediction == 1:
-                st.info("🎉 Already converting — no discount needed. Keep checkout frictionless.")
-            else:
-                st.markdown("##### 💡 Suggested Retention Actions")
-                st.markdown(
-                    "- 🏷️ Show a limited-time discount\n"
-                    "- 🔁 Recommend related products\n"
-                    "- 🎟️ Send a coupon code\n"
-                    "- 🚚 Offer free delivery\n"
-                    "- 📢 Show a personalized retargeting ad"
+        with right:
+            if not submitted:
+                st.markdown("##### ℹ️ How it works")
+                st.write(
+                    "Fill in a visitor's session behaviour on the left — how many pages "
+                    "they viewed, how long they stayed, and how engaged they were — and "
+                    "the model will estimate their likelihood of completing a purchase."
                 )
+                st.markdown(
+                    "- 🛒 **High pages + long duration + repeat product views** → likely to buy\n"
+                    "- 🚪 **Few pages + short duration + high bounce/exit rate** → unlikely to buy"
+                )
+            else:
+                input_dict = {
+                    "Administrative": administrative,
+                    "Administrative_Duration": administrative_duration,
+                    "Informational": informational,
+                    "Informational_Duration": informational_duration,
+                    "ProductRelated": product_related,
+                    "ProductRelated_Duration": product_related_duration,
+                    "BounceRates": bounce_rates,
+                    "ExitRates": exit_rates,
+                    "PageValues": page_values,
+                    "SpecialDay": 0.0,  # not surfaced in the UI; defaulted to "not near a special day"
+                    "Month": MONTH_MAP[month],
+                    "OperatingSystems": OS_OPTIONS[operating_systems],
+                    "Browser": BROWSER_OPTIONS[browser],
+                    "Region": REGION_OPTIONS[region],
+                    "TrafficType": TRAFFIC_OPTIONS[traffic_type],
+                    "VisitorType": VISITOR_MAP[visitor_type],
+                    "Weekend": 1 if weekend == "Yes" else 0
+                }
 
-            with st.expander("See raw input passed to the model"):
-                st.dataframe(input_df)
+                input_df = pd.DataFrame([input_dict])[FEATURE_ORDER]
+                input_scaled = scaler.transform(input_df)
+
+                prediction = model.predict(input_scaled)[0]
+                proba = model.predict_proba(input_scaled)[0]
+                prob_no, prob_yes = proba[0], proba[1]
+
+                st.markdown("##### 🎯 Result")
+                if prediction == 1:
+                    st.success("✅ **Likely to PURCHASE**")
+                else:
+                    st.warning("❌ **Unlikely to purchase**")
+
+                m1, m2 = st.columns(2)
+                m1.metric("Chance of Purchase", f"{prob_yes:.1%}")
+                m2.metric("Chance of No Purchase", f"{prob_no:.1%}")
+
+                prob_df = pd.DataFrame({
+                    "Outcome": ["Purchase", "No Purchase"],
+                    "Probability (%)": [prob_yes * 100, prob_no * 100]
+                }).set_index("Outcome")
+                st.bar_chart(prob_df)
+
+                st.markdown("---")
+                if prediction == 1:
+                    st.info("🎉 Already converting — no discount needed. Keep checkout frictionless.")
+                else:
+                    st.markdown("##### 💡 Suggested Retention Actions")
+                    st.markdown(
+                        "- 🏷️ Show a limited-time discount\n"
+                        "- 🔁 Recommend related products\n"
+                        "- 🎟️ Send a coupon code\n"
+                        "- 🚚 Offer free delivery\n"
+                        "- 📢 Show a personalized retargeting ad"
+                    )
+
+                with st.expander("See raw input passed to the model"):
+                    st.dataframe(input_df)
+
+    # --------------------------------------------------------------------
+    # MODE B: BATCH PREDICTION (upload a CSV of many visitors at once)
+    # --------------------------------------------------------------------
+    else:
+        st.markdown("##### 📤 Upload a CSV to predict many visitors at once")
+        st.caption(
+            "Expected columns: Administrative, Administrative_Duration, Informational, "
+            "Informational_Duration, ProductRelated, ProductRelated_Duration, BounceRates, "
+            "ExitRates, PageValues, SpecialDay (optional), Month, OperatingSystems, Browser, "
+            "Region, TrafficType, VisitorType, Weekend"
+        )
+
+        batch_file = st.file_uploader("Upload visitor sessions CSV", type=["csv"], key="batch_upload")
+
+        if batch_file is not None:
+            try:
+                batch_df = pd.read_csv(batch_file)
+                work_df = batch_df.copy()
+
+                # Encode Month / VisitorType / Weekend if they arrive as text/bool
+                if work_df["Month"].dtype == object:
+                    work_df["Month"] = work_df["Month"].map(MONTH_MAP)
+                if work_df["VisitorType"].dtype == object:
+                    work_df["VisitorType"] = work_df["VisitorType"].map(VISITOR_MAP)
+                if work_df["Weekend"].dtype == object or work_df["Weekend"].dtype == bool:
+                    work_df["Weekend"] = work_df["Weekend"].astype(str).str.lower().map(
+                        {"true": 1, "false": 0, "yes": 1, "no": 0, "1": 1, "0": 0}
+                    )
+                if "SpecialDay" not in work_df.columns:
+                    work_df["SpecialDay"] = 0.0
+
+                missing_cols = [c for c in FEATURE_ORDER if c not in work_df.columns]
+                if missing_cols:
+                    st.error(f"Missing required column(s): {', '.join(missing_cols)}")
+                elif work_df[FEATURE_ORDER].isnull().any().any():
+                    st.error(
+                        "Some values couldn't be parsed (check Month/VisitorType/Weekend "
+                        "spelling). Please review the uploaded file."
+                    )
+                else:
+                    X_batch = work_df[FEATURE_ORDER]
+                    X_batch_scaled = scaler.transform(X_batch)
+
+                    preds = model.predict(X_batch_scaled)
+                    probs = model.predict_proba(X_batch_scaled)[:, 1]
+
+                    results_df = batch_df.copy()
+                    results_df["Prediction"] = np.where(preds == 1, "Purchase", "No Purchase")
+                    results_df["Purchase Probability"] = (probs * 100).round(2)
+
+                    st.success(f"✅ Predicted {len(results_df)} sessions.")
+
+                    r1, r2 = st.columns(2)
+                    r1.metric("Predicted to Purchase", int((preds == 1).sum()))
+                    r2.metric("Predicted No Purchase", int((preds == 0).sum()))
+
+                    st.dataframe(results_df, use_container_width=True)
+
+                    csv_out = results_df.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "⬇️ Download predictions as CSV",
+                        data=csv_out,
+                        file_name="purchase_intention_predictions.csv",
+                        mime="text/csv"
+                    )
+            except Exception as e:
+                st.error(f"Couldn't process that file: {e}")
+        else:
+            st.info("Upload a CSV above to get predictions for multiple visitors at once.")
 
 # ==============================================================================
 # TAB 2: MODEL COMPARISON

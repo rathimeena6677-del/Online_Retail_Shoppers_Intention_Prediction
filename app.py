@@ -182,102 +182,127 @@ with tab_predict:
 
         with left:
             with st.form("prediction_form"):
+                st.caption("Defaults below are a real purchasing session from the dataset (Revenue = True).")
                 st.markdown("##### 📄 Pages Viewed & Time Spent")
                 c1, c2, c3 = st.columns(3)
                 with c1:
                     administrative = st.number_input("Administrative pages", min_value=0, value=3, step=1)
-                    administrative_duration = st.number_input("Admin time spent (sec)", min_value=0.0, value=80.0, key="ad")
+                    administrative_duration = st.number_input("Admin time spent (sec)", min_value=0.0, value=67.5, key="ad")
                 with c2:
-                    informational = st.number_input("Informational pages", min_value=0, value=2, step=1)
-                    informational_duration = st.number_input("Info time spent (sec)", min_value=0.0, value=40.0, key="in")
+                    informational = st.number_input("Informational pages", min_value=0, value=0, step=1)
+                    informational_duration = st.number_input("Info time spent (sec)", min_value=0.0, value=0.0, key="in")
                 with c3:
-                    product_related = st.number_input("Product pages", min_value=0, value=35, step=1)
-                    product_related_duration = st.number_input("Product time spent (sec)", min_value=0.0, value=1500.0, key="pr")
+                    product_related = st.number_input("Product pages", min_value=0, value=30, step=1)
+                    product_related_duration = st.number_input("Product time spent (sec)", min_value=0.0, value=761.75, key="pr")
 
                 st.markdown("##### 📈 Engagement Quality")
                 c4, c5, c6 = st.columns(3)
                 with c4:
                     bounce_rates = st.slider("Bounce rate", 0.0, 1.0, 0.0, 0.01)
                 with c5:
-                    exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.01, 0.01)
+                    exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.015, 0.01)
                 with c6:
-                    page_values = st.number_input("Page value ($)", min_value=0.0, value=35.0)
+                    page_values = st.number_input("Page value ($)", min_value=0.0, value=19.31)
 
                 st.markdown("##### 👤 Visitor Details")
                 c7, c8, c9 = st.columns(3)
                 with c7:
-                    month = st.selectbox("Month", list(MONTH_MAP.keys()), index=list(MONTH_MAP.keys()).index("Nov"))
-                    weekend = st.selectbox("Weekend session?", ["No", "Yes"])
+                    month = st.selectbox("Month", list(MONTH_MAP.keys()), index=list(MONTH_MAP.keys()).index("Dec"))
+                    weekend = st.selectbox("Weekend session?", ["No", "Yes"], index=1)
                 with c8:
                     visitor_type = st.selectbox(
                         "Visitor type", list(VISITOR_MAP.keys()),
                         index=list(VISITOR_MAP.keys()).index("Returning_Visitor")
                     )
-                    operating_systems = st.selectbox("Operating system", list(OS_OPTIONS.keys()))
+                    operating_systems = st.selectbox(
+                        "Operating system", list(OS_OPTIONS.keys()),
+                        index=list(OS_OPTIONS.keys()).index("OS 2")
+                    )
                 with c9:
-                    browser = st.selectbox("Browser", list(BROWSER_OPTIONS.keys()))
-                    region = st.selectbox("Region", list(REGION_OPTIONS.keys()))
+                    browser = st.selectbox(
+                        "Browser", list(BROWSER_OPTIONS.keys()),
+                        index=list(BROWSER_OPTIONS.keys()).index("Browser 4")
+                    )
+                    region = st.selectbox(
+                        "Region", list(REGION_OPTIONS.keys()),
+                        index=list(REGION_OPTIONS.keys()).index("Region 1")
+                    )
 
-                traffic_type = st.selectbox("Traffic source", list(TRAFFIC_OPTIONS.keys()))
+                traffic_type = st.selectbox(
+                    "Traffic source", list(TRAFFIC_OPTIONS.keys()),
+                    index=list(TRAFFIC_OPTIONS.keys()).index("Traffic Type 1")
+                )
 
-                st.form_submit_button("🔍 Predict Purchase Intention")
+                submitted = st.form_submit_button("🔍 Predict Purchase Intention")
 
         with right:
-            input_dict = {
-                "Administrative": administrative,
-                "Administrative_Duration": administrative_duration,
-                "Informational": informational,
-                "Informational_Duration": informational_duration,
-                "ProductRelated": product_related,
-                "ProductRelated_Duration": product_related_duration,
-                "BounceRates": bounce_rates,
-                "ExitRates": exit_rates,
-                "PageValues": page_values,
-                "SpecialDay": 0.0,  # not surfaced in the UI; defaulted to "not near a special day"
-                "Month": MONTH_MAP[month],
-                "OperatingSystems": OS_OPTIONS[operating_systems],
-                "Browser": BROWSER_OPTIONS[browser],
-                "Region": REGION_OPTIONS[region],
-                "TrafficType": TRAFFIC_OPTIONS[traffic_type],
-                "VisitorType": VISITOR_MAP[visitor_type],
-                "Weekend": 1 if weekend == "Yes" else 0
-            }
-
-            input_df = pd.DataFrame([input_dict])[FEATURE_ORDER]
-            input_scaled = scaler.transform(input_df)
-
-            prediction = model.predict(input_scaled)[0]
-            proba = model.predict_proba(input_scaled)[0]
-            prob_no, prob_yes = proba[0], proba[1]
-
-            st.markdown("##### 🎯 Result")
-            if prediction == 1:
-                st.success("✅ **Likely to PURCHASE**")
-            else:
-                st.warning("❌ **Unlikely to purchase**")
-
-            m1, m2 = st.columns(2)
-            m1.metric("Chance of Purchase", f"{prob_yes:.1%}")
-            m2.metric("Chance of No Purchase", f"{prob_no:.1%}")
-
-            prob_df = pd.DataFrame({
-                "Outcome": ["Purchase", "No Purchase"],
-                "Probability (%)": [prob_yes * 100, prob_no * 100]
-            }).set_index("Outcome")
-            st.bar_chart(prob_df)
-
-            st.markdown("---")
-            if prediction == 1:
-                st.info("🎉 Already converting — no discount needed. Keep checkout frictionless.")
-            else:
-                st.markdown("##### 💡 Suggested Retention Actions")
-                st.markdown(
-                    "- 🏷️ Show a limited-time discount\n"
-                    "- 🔁 Recommend related products\n"
-                    "- 🎟️ Send a coupon code\n"
-                    "- 🚚 Offer free delivery\n"
-                    "- 📢 Show a personalized retargeting ad"
+            if not submitted:
+                st.markdown("##### ℹ️ How it works")
+                st.write(
+                    "Fill in a visitor's session behaviour on the left — how many pages "
+                    "they viewed, how long they stayed, and how engaged they were — then "
+                    "click **Predict Purchase Intention** to see the result."
                 )
+                st.markdown(
+                    "- 🛒 **High pages + long duration + repeat product views** → likely to buy\n"
+                    "- 🚪 **Few pages + short duration + high bounce/exit rate** → unlikely to buy"
+                )
+            else:
+                input_dict = {
+                    "Administrative": administrative,
+                    "Administrative_Duration": administrative_duration,
+                    "Informational": informational,
+                    "Informational_Duration": informational_duration,
+                    "ProductRelated": product_related,
+                    "ProductRelated_Duration": product_related_duration,
+                    "BounceRates": bounce_rates,
+                    "ExitRates": exit_rates,
+                    "PageValues": page_values,
+                    "SpecialDay": 0.0,  # not surfaced in the UI; defaulted to "not near a special day"
+                    "Month": MONTH_MAP[month],
+                    "OperatingSystems": OS_OPTIONS[operating_systems],
+                    "Browser": BROWSER_OPTIONS[browser],
+                    "Region": REGION_OPTIONS[region],
+                    "TrafficType": TRAFFIC_OPTIONS[traffic_type],
+                    "VisitorType": VISITOR_MAP[visitor_type],
+                    "Weekend": 1 if weekend == "Yes" else 0
+                }
+
+                input_df = pd.DataFrame([input_dict])[FEATURE_ORDER]
+                input_scaled = scaler.transform(input_df)
+
+                prediction = model.predict(input_scaled)[0]
+                proba = model.predict_proba(input_scaled)[0]
+                prob_no, prob_yes = proba[0], proba[1]
+
+                st.markdown("##### 🎯 Result")
+                if prediction == 1:
+                    st.success("✅ **Likely to PURCHASE**")
+                else:
+                    st.warning("❌ **Unlikely to purchase**")
+
+                m1, m2 = st.columns(2)
+                m1.metric("Chance of Purchase", f"{prob_yes:.1%}")
+                m2.metric("Chance of No Purchase", f"{prob_no:.1%}")
+
+                prob_df = pd.DataFrame({
+                    "Outcome": ["Purchase", "No Purchase"],
+                    "Probability (%)": [prob_yes * 100, prob_no * 100]
+                }).set_index("Outcome")
+                st.bar_chart(prob_df)
+
+                st.markdown("---")
+                if prediction == 1:
+                    st.info("🎉 Already converting — no discount needed. Keep checkout frictionless.")
+                else:
+                    st.markdown("##### 💡 Suggested Retention Actions")
+                    st.markdown(
+                        "- 🏷️ Show a limited-time discount\n"
+                        "- 🔁 Recommend related products\n"
+                        "- 🎟️ Send a coupon code\n"
+                        "- 🚚 Offer free delivery\n"
+                        "- 📢 Show a personalized retargeting ad"
+                    )
 
             with st.expander("See raw input passed to the model"):
                 st.dataframe(input_df)

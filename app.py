@@ -310,15 +310,28 @@ with tab_predict:
                 batch_df = pd.read_csv(batch_file)
                 work_df = batch_df.copy()
 
-                # Encode Month / VisitorType / Weekend if they arrive as text/bool
-                if work_df["Month"].dtype == object:
-                    work_df["Month"] = work_df["Month"].map(MONTH_MAP)
-                if work_df["VisitorType"].dtype == object:
-                    work_df["VisitorType"] = work_df["VisitorType"].map(VISITOR_MAP)
-                if work_df["Weekend"].dtype == object or work_df["Weekend"].dtype == bool:
-                    work_df["Weekend"] = work_df["Weekend"].astype(str).str.lower().map(
-                        {"true": 1, "false": 0, "yes": 1, "no": 0, "1": 1, "0": 0}
+                # Encode Month / VisitorType / Weekend, regardless of pandas dtype
+                def _encode_categorical(value, mapping):
+                    if pd.isna(value):
+                        return np.nan
+                    if isinstance(value, str):
+                        return mapping.get(value.strip(), np.nan)
+                    return value  # already numeric
+
+                def _encode_weekend(value):
+                    if pd.isna(value):
+                        return np.nan
+                    if isinstance(value, bool):
+                        return int(value)
+                    if isinstance(value, (int, float)):
+                        return int(value)
+                    return {"true": 1, "false": 0, "yes": 1, "no": 0, "1": 1, "0": 0}.get(
+                        str(value).strip().lower(), np.nan
                     )
+
+                work_df["Month"] = work_df["Month"].apply(lambda v: _encode_categorical(v, MONTH_MAP))
+                work_df["VisitorType"] = work_df["VisitorType"].apply(lambda v: _encode_categorical(v, VISITOR_MAP))
+                work_df["Weekend"] = work_df["Weekend"].apply(_encode_weekend)
                 if "SpecialDay" not in work_df.columns:
                     work_df["SpecialDay"] = 0.0
 

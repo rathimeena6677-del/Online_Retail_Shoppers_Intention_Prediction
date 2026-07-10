@@ -191,17 +191,17 @@ with tab_predict:
                     informational = st.number_input("Informational pages", min_value=0, value=2, step=1)
                     informational_duration = st.number_input("Info time spent (sec)", min_value=0.0, value=40.0, key="in")
                 with c3:
-                    product_related = st.number_input("Product pages", min_value=0, value=25, step=1)
-                    product_related_duration = st.number_input("Product time spent (sec)", min_value=0.0, value=900.0, key="pr")
+                    product_related = st.number_input("Product pages", min_value=0, value=35, step=1)
+                    product_related_duration = st.number_input("Product time spent (sec)", min_value=0.0, value=1500.0, key="pr")
 
                 st.markdown("##### 📈 Engagement Quality")
                 c4, c5, c6 = st.columns(3)
                 with c4:
-                    bounce_rates = st.slider("Bounce rate", 0.0, 1.0, 0.01, 0.01)
+                    bounce_rates = st.slider("Bounce rate", 0.0, 1.0, 0.0, 0.01)
                 with c5:
-                    exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.02, 0.01)
+                    exit_rates = st.slider("Exit rate", 0.0, 1.0, 0.01, 0.01)
                 with c6:
-                    page_values = st.number_input("Page value ($)", min_value=0.0, value=15.0)
+                    page_values = st.number_input("Page value ($)", min_value=0.0, value=35.0)
 
                 st.markdown("##### 👤 Visitor Details")
                 c7, c8, c9 = st.columns(3)

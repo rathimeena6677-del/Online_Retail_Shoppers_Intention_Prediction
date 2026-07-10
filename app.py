@@ -1,3 +1,4 @@
+
 import os
 import pickle
 import numpy as np
@@ -304,8 +305,11 @@ with tab_predict:
                         "- 📢 Show a personalized retargeting ad"
                     )
 
-            with st.expander("See raw input passed to the model"):
-                st.dataframe(input_df)
+                # NOTE: moved inside the `else` (submitted) branch — this used to
+                # sit outside the if/else and referenced `input_df` before it
+                # existed on first page load, causing a NameError.
+                with st.expander("See raw input passed to the model"):
+                    st.dataframe(input_df)
 
     # --------------------------------------------------------------------
     # MODE B: BATCH PREDICTION (upload a CSV of many visitors at once)
